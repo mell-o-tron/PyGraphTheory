@@ -7,7 +7,149 @@ from pygame.locals import *
 
 import itertools
 
+##### 2D vector operations #####
+def vectorSum(a, b):
+    return [a[0] + b[0], a[1] + b[1]]
 
+def vectorMul(a, k):
+    return [a[0] * k, a[1] * k]
+
+def vectorDistance(a, b):
+    return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+
+def vectorCeil(a):
+    return [math.ceil(a[0]), math.ceil(a[1])]
+
+def vectorFloor(a):
+    return [math.floor(a[0]), math.floor(a[1])]
+
+def vectorSign(a):
+    if a[0] >= 0 and a[1] >= 0:
+        return 1
+    else:
+        return -1
+
+##### Generate random point in circular annulus #####
+def randInCircAnnulus(c, r1, r2):
+    r = random.randint(r1, r2)
+    angle = random.uniform(0, 2 * 3.14159265)
+    offset = [r * math.cos(angle), r * math.sin(angle)]
+    return vectorSum(c, offset)
+
+##### Poisson Disk Sampling #####
+
+def PoissonDisk(win_size, n_vertices, r, k, screen):
+    cell_size = r / math.sqrt(2)
+    l_cells   = math.ceil(win_size / cell_size)
+    grid = []
+    for i in range(l_cells):
+        grid.append([])
+        for j in range(l_cells):
+            grid[i].append(None)
+
+            # VISUALIZE GRID CENTERS
+            pygame.draw.circle(screen,
+                            (255,255,255),
+                            (math.ceil(cell_size) * i , math.ceil(cell_size) * j),
+                            1)
+
+    active_list = []
+    vertex_list = []
+
+    i = 0
+    mid_point = [math.ceil(l_cells/2), math.ceil(l_cells/2)]
+    x         = vectorMul(mid_point, math.ceil(cell_size))
+
+    active_list.append(x)
+    vertex_list.append(x)
+    grid[mid_point[0]][mid_point[1]] = i
+
+    pygame.draw.circle(screen,
+                            (0,255,255),
+                            x,
+                            3)
+
+    pygame.display.flip()
+    sleep(.2)
+
+    while len(active_list) > 0 and len(vertex_list) < n_vertices:
+        curr_active_point = active_list[random.randint(0,len(active_list) - 1)]
+
+        pygame.draw.circle(screen,
+                            (255,0,255),
+                            curr_active_point,
+                            9)
+        pygame.display.flip()
+        sleep(.2)
+
+        #print(active_list)
+        found = False
+        for j in range(k):
+            new_point     = None
+            while True:
+                tmp_point = randInCircAnnulus(curr_active_point, r, 2*r)
+                tmp_pos_in_grid = vectorCeil(vectorMul(tmp_point, 1/cell_size))
+
+                if max(tmp_pos_in_grid) < l_cells and vectorSign(tmp_point) > 0:
+                    if grid[tmp_pos_in_grid[0]][tmp_pos_in_grid[1]] != None:
+                        continue
+                    new_point = tmp_point
+                    break
+
+
+            #print(f"new point: {new_point}")
+
+            pygame.draw.circle(screen,
+                            (255,0,0),
+                            new_point,
+                            3)
+
+            pygame.display.flip()
+            sleep(.2)
+
+            pos_in_grid   = vectorCeil(vectorMul(new_point, 1/cell_size))
+            #print(f"pos_in_grid: {pos_in_grid}")
+
+            neighbourhood = [vectorSum(pos_in_grid, [0,  1]),
+                             vectorSum(pos_in_grid, [0, -1]),
+                             vectorSum(pos_in_grid, [1,  0]),
+                             vectorSum(pos_in_grid, [-1, 0]),
+                             vectorSum(pos_in_grid, [1,  1]),
+                             vectorSum(pos_in_grid, [-1, 1]),
+                             vectorSum(pos_in_grid, [1, -1]),
+                             vectorSum(pos_in_grid, [-1,-1])]
+
+            print(new_point)
+            accepted = True
+            for n in neighbourhood:
+                if vectorSign(n) > 0 and max(n) < l_cells:
+                    g = grid[n[0]][n[1]]
+                    print(f"\t n = {n} := {g}")
+                    if g != None:
+                        print(f"\t({vectorDistance(vertex_list[g], new_point)} vs {r})")
+                    accepted = accepted and (g == None or vectorDistance(vertex_list[g], new_point) > r)
+                    if accepted == False:
+                        break
+            print(f"\taccepted: {accepted}\n")
+
+            if accepted:
+                vertex_list.append(new_point)
+
+                pygame.draw.circle(screen,
+                            (0,255,255),
+                            new_point,
+                            3)
+                i += 1
+                grid[pos_in_grid[0]][pos_in_grid[1]] = i
+                found = True
+                active_list.append(new_point)
+                break
+        if not found:
+            active_list.remove(curr_active_point)
+
+    return vertex_list
+
+##### Generates and returns Adjacency List #####
 def AdjList(n_vertices, edges):
     res = []
     for i in range(n_vertices):
@@ -20,6 +162,7 @@ def AdjList(n_vertices, edges):
     return res
 
 
+##### Returns an array of connected components #####
 def connectedComponents(n_vertices, edges):
     res = []
     vertices = []
@@ -27,7 +170,8 @@ def connectedComponents(n_vertices, edges):
         vertices.append(i)
     i = 0
     while len(vertices) > 0 and i < n_vertices:
-        cc = BFS(i, n_vertices, edges)
+        v = vertices.pop()
+        cc = BFS(v, n_vertices, edges)
         res.append(cc)
         
         for v in cc:
@@ -37,7 +181,7 @@ def connectedComponents(n_vertices, edges):
     return res
     
     
-    
+##### Performs BFS, returns a connected component #####
 def BFS (root, n_vertices, edges):
     if 0 > root or root >= n_vertices:
         print("BFS: Root is out of bounds")
@@ -65,6 +209,7 @@ def BFS (root, n_vertices, edges):
 
     return connected_component
 
+##### Given the number of vertices, generates random positions #####
 def randomPositions(n_vertices, win_size):
     vert_positions = []
     
@@ -81,14 +226,13 @@ def randomPositions(n_vertices, win_size):
     
     return vert_positions
 
-def vectorSum(a, b):
-    return [a[0] + b[0], a[1] + b[1]]
 
+##### Draws a graph #####
 def drawGraph(vert_positions, edges, screen):
     #draw edges
     for e in edges:
         if e[0] != e[1]:
-            pygame.draw.line(screen, 
+            pygame.draw.aaline(screen,
                                 (200,200,200),
                                 vert_positions[e[0]],
                                 vert_positions[e[1]], 
@@ -106,6 +250,7 @@ def drawGraph(vert_positions, edges, screen):
                             position, 
                             4)
 
+##### Draws a connected component #####
 def drawCC(n_vertices, edges, vert_positions, cc, screen, green_amt):
     size = len(cc)
     red_amt = min( 255 * (size / n_vertices), 255)
@@ -115,7 +260,7 @@ def drawCC(n_vertices, edges, vert_positions, cc, screen, green_amt):
 
     for p in cc:
         for v in adj[p]:
-            pygame.draw.line(screen, 
+            pygame.draw.aaline(screen,
                                 (red_amt,green_amt,blue_amt),
                                 vert_positions[p],
                                 vert_positions[v], 
@@ -129,6 +274,7 @@ def drawCC(n_vertices, edges, vert_positions, cc, screen, green_amt):
     
 
 
+##### Adds a random edge to the graph#####
 def addRandomEdge(edges, n_vertices):
     newEdge = [random.randint(0, n_vertices - 1),
                random.randint(0, n_vertices - 1)]
@@ -138,6 +284,19 @@ def addRandomEdge(edges, n_vertices):
     return edges
 
 
+##### Generates random edges given n_vertices and a probability #####
+def generateRandomEdges(n_vertices, p_prime):
+    p = (2 - math.sqrt(4 - 4 * p_prime))/2
+    max_r = 10000000
+    edges = []
+    for i in range(n_vertices):
+        for j in range(n_vertices):
+            r = random.randint(0, max_r)
+            #print(r)
+            if r < (p * max_r) and [j,i] not in edges and i !=j:
+                edges.append([i,j])
+    return edges
+
 ########################################### PYGAME WINDOW ###########################################
 
 # Set up the drawing window
@@ -145,13 +304,15 @@ window_size = 800
 
 screen = pygame.display.set_mode([window_size, window_size])
 
-n_vertices = 20
+n_vertices = 10
 edges = []
 
-vert_positions = randomPositions(n_vertices, window_size)
+cell_size = 100
+
 
 screen.fill((10, 10, 10))
-
+#vert_positions = randomPositions(n_vertices, window_size)
+vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen)
 drawGraph(vert_positions, edges, screen)
 
 CC = []
@@ -163,8 +324,9 @@ while True:
         running = False
         break
     if event.type == KEYDOWN and event.key == K_SPACE:
-        vert_positions = randomPositions(n_vertices, window_size)
         screen.fill((10, 10, 10))
+        #vert_positions = randomPositions(n_vertices, window_size)
+        vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen)
         drawGraph(vert_positions, edges, screen)
         
         green_amt  = 0
@@ -178,7 +340,28 @@ while True:
         CC = []
         screen.fill((10, 10, 10))
         drawGraph(vert_positions, edges, screen)
-        
+
+    if event.type == KEYDOWN and event.key == K_r:
+        edges = generateRandomEdges(n_vertices, .4)
+        CC = []
+        screen.fill((10, 10, 10))
+        drawGraph(vert_positions, edges, screen)
+
+    if event.type == KEYDOWN and event.key == K_m:
+        print("Number of edges is: " + str(len(edges)) + " / " + str((n_vertices * (n_vertices - 1))/2))
+
+    if event.type == KEYDOWN and event.key == K_p:
+        print("Density is " + str(len(edges)/(n_vertices * ((n_vertices - 1))/2)))
+
+    if event.type == KEYDOWN and event.key == K_a:
+        res = 0
+        n_iter = 10000
+        for i in range (n_iter):
+            edges = generateRandomEdges(n_vertices, .99)
+            res += len(edges)/(n_vertices * ((n_vertices - 1))/2)
+        print("Avg density is " + str(res/n_iter))
+
+
     if event.type == KEYDOWN and event.key == K_b:
         CC = connectedComponents(n_vertices, edges)
         screen.fill((10, 10, 10))
@@ -190,4 +373,8 @@ while True:
             drawCC(n_vertices, edges, vert_positions, c, screen, green_amt)
             green_amt += green_step
         
+        lens = []
+        for c in CC:
+            lens.append(len(c))
+        print(f"{lens}\n")
 pygame.quit()
