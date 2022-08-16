@@ -38,7 +38,9 @@ def randInCircAnnulus(c, r1, r2):
 
 ##### Poisson Disk Sampling #####
 
-def PoissonDisk(win_size, n_vertices, r, k, screen):
+SLEEP_AMT = .2
+
+def PoissonDisk(win_size, n_vertices, r, k, screen, inter_render):
     cell_size = r / math.sqrt(2)
     l_cells   = math.ceil(win_size / cell_size)
     grid = []
@@ -48,10 +50,11 @@ def PoissonDisk(win_size, n_vertices, r, k, screen):
             grid[i].append(None)
 
             # VISUALIZE GRID CENTERS
-            pygame.draw.circle(screen,
-                            (255,255,255),
-                            (math.ceil(cell_size) * i , math.ceil(cell_size) * j),
-                            1)
+            if SLEEP_AMT != 0 and inter_render:
+                pygame.draw.circle(screen,
+                                (255,255,255),
+                                (math.ceil(cell_size) * i , math.ceil(cell_size) * j),
+                                1)
 
     active_list = []
     vertex_list = []
@@ -64,23 +67,25 @@ def PoissonDisk(win_size, n_vertices, r, k, screen):
     vertex_list.append(x)
     grid[mid_point[0]][mid_point[1]] = i
 
-    pygame.draw.circle(screen,
-                            (0,255,255),
-                            x,
-                            3)
+    if SLEEP_AMT != 0 and inter_render:
+        pygame.draw.circle(screen,
+                                (0,255,255),
+                                x,
+                                3)
 
-    pygame.display.flip()
-    sleep(.2)
+        pygame.display.flip()
+        sleep(SLEEP_AMT)
 
     while len(active_list) > 0 and len(vertex_list) < n_vertices:
         curr_active_point = active_list[random.randint(0,len(active_list) - 1)]
 
-        pygame.draw.circle(screen,
-                            (255,0,255),
-                            curr_active_point,
-                            9)
-        pygame.display.flip()
-        sleep(.2)
+        if SLEEP_AMT != 0 and inter_render:
+            pygame.draw.circle(screen,
+                                (255,0,255),
+                                curr_active_point,
+                                9)
+            pygame.display.flip()
+            sleep(SLEEP_AMT)
 
         #print(active_list)
         found = False
@@ -98,14 +103,14 @@ def PoissonDisk(win_size, n_vertices, r, k, screen):
 
 
             #print(f"new point: {new_point}")
+            if SLEEP_AMT != 0 and inter_render:
+                pygame.draw.circle(screen,
+                                (255,0,0),
+                                new_point,
+                                3)
 
-            pygame.draw.circle(screen,
-                            (255,0,0),
-                            new_point,
-                            3)
-
-            pygame.display.flip()
-            sleep(.2)
+                pygame.display.flip()
+                sleep(SLEEP_AMT)
 
             pos_in_grid   = vectorCeil(vectorMul(new_point, 1/cell_size))
             #print(f"pos_in_grid: {pos_in_grid}")
@@ -119,26 +124,31 @@ def PoissonDisk(win_size, n_vertices, r, k, screen):
                              vectorSum(pos_in_grid, [1, -1]),
                              vectorSum(pos_in_grid, [-1,-1])]
 
-            print(new_point)
+            if SLEEP_AMT != 0 and inter_render:
+                print(new_point)
             accepted = True
             for n in neighbourhood:
                 if vectorSign(n) > 0 and max(n) < l_cells:
                     g = grid[n[0]][n[1]]
-                    print(f"\t n = {n} := {g}")
-                    if g != None:
+                    if SLEEP_AMT != 0 and inter_render:
+                        print(f"\t n = {n} := {g}")
+                    if g != None and SLEEP_AMT != 0 and inter_render:
                         print(f"\t({vectorDistance(vertex_list[g], new_point)} vs {r})")
                     accepted = accepted and (g == None or vectorDistance(vertex_list[g], new_point) > r)
                     if accepted == False:
                         break
-            print(f"\taccepted: {accepted}\n")
+            if SLEEP_AMT != 0 and inter_render:
+                print(f"\taccepted: {accepted}\n")
 
             if accepted:
                 vertex_list.append(new_point)
-
-                pygame.draw.circle(screen,
-                            (0,255,255),
-                            new_point,
-                            3)
+                if inter_render:
+                    # Drawing accepted points (cool transition)
+                    pygame.draw.circle(screen,
+                                (0,255,255),
+                                new_point,
+                                3)
+                    pygame.display.flip()
                 i += 1
                 grid[pos_in_grid[0]][pos_in_grid[1]] = i
                 found = True
@@ -304,15 +314,15 @@ window_size = 800
 
 screen = pygame.display.set_mode([window_size, window_size])
 
-n_vertices = 10
+n_vertices = 200
 edges = []
 
-cell_size = 100
+cell_size = 30
 
 
 screen.fill((10, 10, 10))
 #vert_positions = randomPositions(n_vertices, window_size)
-vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen)
+vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen, False)
 drawGraph(vert_positions, edges, screen)
 
 CC = []
@@ -326,7 +336,7 @@ while True:
     if event.type == KEYDOWN and event.key == K_SPACE:
         screen.fill((10, 10, 10))
         #vert_positions = randomPositions(n_vertices, window_size)
-        vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen)
+        vert_positions = PoissonDisk(window_size, n_vertices, cell_size, 30, screen, False)
         drawGraph(vert_positions, edges, screen)
         
         green_amt  = 0
@@ -342,7 +352,7 @@ while True:
         drawGraph(vert_positions, edges, screen)
 
     if event.type == KEYDOWN and event.key == K_r:
-        edges = generateRandomEdges(n_vertices, .4)
+        edges = generateRandomEdges(n_vertices, .01)
         CC = []
         screen.fill((10, 10, 10))
         drawGraph(vert_positions, edges, screen)
