@@ -9,6 +9,7 @@ from random_graph import *
 from connected_components import *
 from graph_repr import *
 from draw_stuff import *
+from graph_search import *
 
 from pygame.locals import *
 
@@ -22,10 +23,10 @@ window_size = 800
 
 screen = pygame.display.set_mode([window_size, window_size])
 
-n_vertices = 200
+n_vertices = 10
 edges = []
 
-cell_size = 30
+cell_size = 80
 
 
 screen.fill((10, 10, 10))
@@ -60,7 +61,7 @@ while True:
         drawGraph(vert_positions, edges, screen)
 
     if event.type == KEYDOWN and event.key == K_r:
-        edges = generateRandomEdges(n_vertices, .01)
+        edges = generateRandomEdges(n_vertices, .2)
         CC = []
         screen.fill((10, 10, 10))
         drawGraph(vert_positions, edges, screen)
@@ -95,4 +96,13 @@ while True:
         for c in CC:
             lens.append(len(c))
         print(f"{lens}\n")
+
+    if event.type == KEYDOWN and event.key == K_s:
+        result_tree = generic_graph_search_pre(n_vertices, AdjList(n_vertices, edges), 0, n_vertices - 1, push_first, pop_first, "dfs")
+
+        print(result_tree)
+
+        drawGraph(vert_positions, result_tree, screen, (0,200,0))
+
+
 pygame.quit()

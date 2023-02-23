@@ -1,13 +1,14 @@
 import pygame
 from graph_repr import *
+from vec_ops import *
 
 ##### Draws a graph #####
-def drawGraph(vert_positions, edges, screen):
+def drawGraph(vert_positions, edges, screen, edge_col = (200, 200, 200)):
     #draw edges
     for e in edges:
         if e[0] != e[1]:
             pygame.draw.aaline(screen,
-                                (200,200,200),
+                                edge_col,
                                 vert_positions[e[0]],
                                 vert_positions[e[1]],
                                 2)
